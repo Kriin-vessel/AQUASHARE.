@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AquaShare — API Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: sans-serif; margin: 0; background: #f1f5f9; color: #1e293b; }
+    header { background: #2563eb; color: #fff; padding: 16px 24px; }
+    header h1 { margin: 0; font-size: 1.2rem; }
+    main { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; padding: 24px; }
+    .card { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+    .card h2 { margin: 0 0 16px; font-size: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+    label { display: block; font-size: .8rem; margin-bottom: 3px; color: #475569; }
+    input, select, textarea { width: 100%; padding: 7px 10px; margin-bottom: 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: .9rem; }
+    textarea { resize: vertical; min-height: 60px; }
+    button { padding: 8px 18px; background: #2563eb; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: .9rem; }
+    button:hover { background: #1d4ed8; }
+    .response { margin-top: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px; font-size: .78rem; font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto; display: none; }
+  </style>
+</head>
+<body>
+<header><h1>AquaShare — API Demo</h1></header>
+<main>
+
+  <!-- REGISTER -->
+  <div class="card">
+    <h2>Register</h2>
+    <form data-endpoint="/php/init/auth/registration.php" data-method="POST">
+      <label>Name</label><input name="name" value="Test User">
+      <label>Phone</label><input name="phone" value="670000001">
+      <label>Email</label><input name="email" value="test@aquashare.com">
+      <label>Password (hashed)</label><input name="password_hash" value="testhash123">
+      <label>Role</label>
+      <select name="role"><option value="resident">Resident</option><option value="supplier">Supplier</option></select>
+      <button type="submit">Send</button>
+    </form>
+    <pre class="response"></pre>
+  </div>
+
+  <!-- LOGIN -->
+  <div class="card">
+    <h2>Login</h2>
+    <form data-endpoint="/php/init/auth/index.php" data-method="POST">
+      <label>Email</label><input name="email" value="test@aquashare.com">
+      <label>Password (hashed)</label><input name="password_hash" value="testhash123">
+      <button type="submit">Send</button>
+    </form>
+    <pre class="response"></pre>
+  </div>
+
+  <!-- CREATE PROFILE -->
+  <div class="card">
+    <h2>Create Profile</h2>
+    <form data-endpoint="/php/init/auth/createprofile.php" data-method="POST">
+      <label>Address</label><input name="address" value="Dirty South, Buea">
+      <label>Landmark</label><input name="landmark" value="Near the junction">
+      <button type="submit">Send</button>
+    </form>
+    <pre class="response"></pre>
+  </div>
+
+  <!-- SEND MESSAGE -->
+  <div class="card">
+    <h2>Send Message</h2>
+    <form data-endpoint="/php/init/communication/send.php" data-method="POST" data-multipart="1">
+      <label>Request ID</label><input name="request_id" value="1">
+      <label>Type</label>
+      <select name="type" id="msgType">
+        <option value="text">text</option>
+        <option value="image">image</option>
+        <option value="location">location</option>
+      </select>
+      <label>Body (text or location JSON)</label>
+      <textarea name="body">Hello, do you have water?</textarea>
+      <div id="imgField" style="display:none">
+        <label>Image file</label><input type="file" name="image" accept="image/*">
+      </div>
+      <button type="submit">Send</button>
+    </form>
+    <pre class="response"></pre>
+  </div>
+
+  <!-- GET MESSAGES -->
+  <div class="card">
+    <h2>Get Messages</h2>
+    <form data-endpoint="/php/init/communication/get.php" data-method="GET">
+      <label>Request ID</label><input name="request_id" value="1">
+      <button type="submit">Send</button>
+    </form>
+    <pre class="response"></pre>
+  </div>
+
+  <!-- MARK READ -->
+  <div class="card">
+    <h2>Mark Messages as Read</h2>
+    <form data-endpoint="/php/init/communication/markread.php" data-method="POST">
+      <label>Request ID</label><input name="request_id" value="1">
+      <button type="submit">Send</button>
+    </form>
+    <pre class="response"></pre>
+  </div>
+
+</main>
+
+<script>
+  // toggle image field based on message type
+  document.getElementById('msgType').addEventListener('change', function () {
+    document.getElementById('imgField').style.display = this.value === 'image' ? 'block' : 'none';
+  });
+
+  document.querySelectorAll('form[data-endpoint]').forEach(form => {
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const endpoint = form.dataset.endpoint;
+      const method   = form.dataset.method;
+      const pre      = form.nextElementSibling;
+      pre.style.display = 'block';
+      pre.textContent = 'Loading…';
+
+      try {
+        let res;
+        if (method === 'GET') {
+          const params = new URLSearchParams(new FormData(form));
+          res = await fetch(`${endpoint}?${params}`, { credentials: 'include' });
+        } else {
+          const body = form.dataset.multipart ? new FormData(form) : new URLSearchParams(new FormData(form));
+          res = await fetch(endpoint, { method, body, credentials: 'include' });
+        }
+        const text = await res.text();
+        try { pre.textContent = JSON.stringify(JSON.parse(text), null, 2); }
+        catch { pre.textContent = text; }
+      } catch (err) {
+        pre.textContent = 'Fetch error: ' + err.message;
+      }
+    });
+  });
+</script>
+</body>
+</html>
